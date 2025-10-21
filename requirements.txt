@@ -3,3 +3,4 @@ selenium
 undetected-chromedriver
 brotli
 gunicorn
+setuptools
