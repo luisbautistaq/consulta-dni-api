@@ -5,7 +5,19 @@ async def consulta_dni(dni: str):
     data = {"dni": dni, "nombres": None, "apellido_paterno": None, "apellido_materno": None, "fecha_nacimiento": None}
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser = await p.chromium.launch(
+    headless=True,
+    args=[
+        "--no-sandbox",
+        "--disable-dev-shm-usage",  # usa /tmp en lugar de memoria RAM
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+        "--single-process",
+        "--no-zygote",
+        "--disable-extensions"
+    ]
+)
+
             page = await browser.new_page()
 
             # Nombres y apellidos
