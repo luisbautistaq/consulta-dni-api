@@ -8,5 +8,7 @@ services:
         libcups2 libxkbcommon0 libx11-xcb1 libxcomposite1 libxdamage1 libxext6 libxi6 \
         libxrandr2 libxrender1 libxtst6 libpangocairo-1.0-0 libpango-1.0-0 libglib2.0-0 \
         libgtk-3-0 libgbm1 libasound2 xdg-utils wget ca-certificates fonts-liberation \
-        && pip install -r requirements.txt && playwright install --with-deps chromium
+        && pip install --upgrade pip \
+        && pip install -r requirements.txt \
+        && playwright install --with-deps chromium
     startCommand: gunicorn app:app
