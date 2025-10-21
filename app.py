@@ -13,13 +13,11 @@ def consulta():
     if not dni:
         return jsonify({"status": "error", "message": "Debe ingresar un DNI"}), 400
 
-    try:
-        data = consulta_completa(dni)
-        if not data:
-            return jsonify({"status": "error", "message": "No se pudo obtener información"}), 500
-        return jsonify({"status": "success", "data": data})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    data = consulta_completa(dni)
+    if not data:
+        return jsonify({"status": "error", "message": "No se pudo obtener información"}), 500
+
+    return jsonify({"status": "success", "data": data})
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=10000)
