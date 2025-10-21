@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 import nest_asyncio, asyncio
-from consulta_dni_playwright import consulta_dni
+from consulta_dni_full_stable import consulta_dni
 
 nest_asyncio.apply()
 app = Flask(__name__)
