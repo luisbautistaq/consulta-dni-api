@@ -2,6 +2,7 @@ services:
   - type: web
     name: consulta-dni-api
     env: python
+    pythonVersion: 3.11
     buildCommand: |
       apt-get update && apt-get install -y \
         ca-certificates wget gnupg \
