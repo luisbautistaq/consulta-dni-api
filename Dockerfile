@@ -2,20 +2,21 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Instala dependencias necesarias para Chrome headless
+RUN apt-get update && apt-get install -y \
+    wget unzip xvfb libxi6 libgconf-2-4 \
+    libnss3 libasound2 fonts-liberation libappindicator3-1 \
+    libxss1 lsb-release xdg-utils libatk-bridge2.0-0 \
+    libgtk-3-0 libdrm-dev libgbm-dev chromium chromium-driver && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
-# Instala las dependencias necesarias del sistema para Chromium (sin las fuentes antiguas)
-RUN apt-get update && apt-get install -y \
-    libnss3 libxss1 libatk1.0-0 libatk-bridge2.0-0 \
-    libcups2 libxkbcommon0 libx11-xcb1 libxcomposite1 libxdamage1 \
-    libxext6 libxi6 libxrandr2 libxrender1 libxtst6 \
-    libpangocairo-1.0-0 libpango-1.0-0 libglib2.0-0 libgtk-3-0 libgbm1 \
-    libasound2 xdg-utils wget ca-certificates fonts-liberation fonts-unifont && \
-    pip install --no-cache-dir -r requirements.txt
+# Puerto dinámico para Railway
+ENV PORT=8080
+EXPOSE 8080
 
-# 👇 Instalamos SOLO el navegador Chromium, sin dependencias del sistema (ya están arriba)
-RUN playwright install chromium
-
-EXPOSE 10000
-
-CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]
+CMD ["sh", "-c", "gunicorn -b 0.0.0.0:${PORT} app:app"]

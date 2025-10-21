@@ -1,5 +1,6 @@
-services:
-  - type: web
-    name: consulta-dni-api
-    env: docker
-    dockerfilePath: ./Dockerfile
+[build]
+builder = "DOCKERFILE"
+
+[env]
+PORT = "8080"
+PYTHONUNBUFFERED = "1"
