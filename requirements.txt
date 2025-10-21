@@ -1,5 +1,5 @@
 flask
 selenium
-chromedriver-autoinstaller
+undetected-chromedriver
 brotli
 gunicorn

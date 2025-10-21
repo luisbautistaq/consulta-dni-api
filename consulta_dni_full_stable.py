@@ -6,16 +6,12 @@ import json
 import re
 import gzip
 import brotli
-import chromedriver_autoinstaller
-from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from concurrent.futures import ThreadPoolExecutor
-
-# Instalar el driver de Chrome automáticamente
-chromedriver_autoinstaller.install()
 
 def decode_body(raw_bytes, headers):
     """Decodifica posibles respuestas comprimidas."""
@@ -95,7 +91,7 @@ def consulta_en_pagina(url, dni, boton_texto, headless=True, timeout_ajax=6):
     chrome_opts.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
     chrome_opts.page_load_strategy = 'eager'
 
-    driver = webdriver.Chrome(options=chrome_opts)
+    driver = uc.Chrome(options=chrome_opts)
     try:
         driver.get(url)
         input_box = WebDriverWait(driver, 8).until(
@@ -107,6 +103,7 @@ def consulta_en_pagina(url, dni, boton_texto, headless=True, timeout_ajax=6):
             EC.element_to_be_clickable((By.XPATH, f"//button[contains(., '{boton_texto}')]"))
         )
         driver.execute_script("arguments[0].click();", button)
+        # Esperar resultado visible
         result_div = WebDriverWait(driver, timeout_ajax).until(
             EC.presence_of_element_located((By.XPATH, "//div[contains(., 'Datos de la Persona') or contains(., 'Información para el DNI')]"))
         )
