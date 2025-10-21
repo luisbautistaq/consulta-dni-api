@@ -1,132 +1,71 @@
-#!/usr/bin/env python3
-# consulta_dni_full_stable.py
-
+import os
 import time
-import json
-import re
-import gzip
-import brotli
 import undetected_chromedriver as uc
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 from concurrent.futures import ThreadPoolExecutor
 
-def decode_body(raw_bytes, headers):
-    """Decodifica posibles respuestas comprimidas."""
-    encoding = None
-    for k, v in headers.items():
-        if k.lower() == "content-encoding":
-            encoding = v.lower()
-            break
+# =========================
+# ✅ Configurar Chrome para Render
+# =========================
+def iniciar_driver():
+    options = uc.ChromeOptions()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+
+    # Render instala Chrome en esta ruta
+    chrome_path = os.getenv("GOOGLE_CHROME_BIN", "/usr/bin/google-chrome")
+    options.binary_location = chrome_path
+
+    driver = uc.Chrome(options=options)
+    return driver
+
+# =========================
+# ✅ Función que consulta en la web
+# =========================
+def consulta_en_pagina(url, boton_texto, dni, accion):
     try:
-        if encoding == "br":
-            return brotli.decompress(raw_bytes).decode("utf-8", errors="ignore")
-        if encoding in ("gzip", "x-gzip"):
-            return gzip.decompress(raw_bytes).decode("utf-8", errors="ignore")
-        return raw_bytes.decode("utf-8", errors="ignore")
-    except Exception:
-        return raw_bytes.decode("latin1", errors="ignore")
-
-def clean_value(s: str) -> str:
-    if not s:
-        return None
-    s = str(s).strip()
-    s = re.sub(r'(?i)(nombres?:?|apellidos?:?|apellido\s*(paterno|materno)?:?)', '', s)
-    s = s.replace("\n", " ").strip()
-    # Eliminar frases publicitarias o basura
-    s = re.sub(r'(?i)(te puede interesar.*|consulta.*aquí.*|haz clic.*)$', '', s).strip()
-    if len(s) <= 1:
-        return None
-    return s
-
-def parse_fields_from_text(text):
-    out = {"dni": None, "nombres": None, "apellido_paterno": None, "apellido_materno": None, "fecha_nacimiento": None}
-    if not text:
-        return out
-    text = re.sub(r'\r', '\n', text)
-
-    # DNI
-    m = re.search(r'\b(\d{8})\b', text)
-    if m:
-        out["dni"] = m.group(1)
-
-    # Nombres
-    m = re.search(r'(?mi)(?:Nombres|Nombre)\s*[:\-]?\s*([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ\s\-]+)', text)
-    if m:
-        val = clean_value(m.group(1))
-        if val and not re.search(r"(nombres y apellidos|en línea|perú|consulta|busca)", val.lower()):
-            out["nombres"] = val
-
-    # Apellido paterno
-    m = re.search(r'(?mi)Apellido Paterno\s*[:\-]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \-]+)', text)
-    if m:
-        out["apellido_paterno"] = clean_value(m.group(1))
-
-    # Apellido materno
-    m = re.search(r'(?mi)Apellido Materno\s*[:\-]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \-]+)', text)
-    if m:
-        out["apellido_materno"] = clean_value(m.group(1))
-
-    # Fecha de nacimiento
-    m = re.search(r'(?mi)(\d{2}\/\d{2}\/\d{4})', text)
-    if m:
-        out["fecha_nacimiento"] = m.group(1).strip()
-
-    return out
-
-def consulta_en_pagina(url, dni, boton_texto, headless=True, timeout_ajax=6):
-    chrome_opts = Options()
-    if headless:
-        chrome_opts.add_argument("--headless=new")
-    chrome_opts.add_argument("--no-sandbox")
-    chrome_opts.add_argument("--disable-dev-shm-usage")
-    chrome_opts.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_opts.add_argument("--disable-gpu")
-    chrome_opts.add_argument("--disable-extensions")
-    chrome_opts.add_argument("--disable-software-rasterizer")
-    chrome_opts.add_argument("--renderer-process-limit=2")
-    chrome_opts.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0 Safari/537.36")
-    chrome_opts.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
-    chrome_opts.page_load_strategy = 'eager'
-
-    driver = uc.Chrome(options=chrome_opts)
-    try:
+        driver = iniciar_driver()
         driver.get(url)
-        input_box = WebDriverWait(driver, 8).until(
-            EC.visibility_of_element_located((By.XPATH, "//input[@type='text' or @name='dni' or @name='dni4']"))
-        )
-        input_box.clear()
+        time.sleep(2)
+        input_box = driver.find_element(By.ID, "dni")
         input_box.send_keys(dni)
-        button = WebDriverWait(driver, 8).until(
-            EC.element_to_be_clickable((By.XPATH, f"//button[contains(., '{boton_texto}')]"))
-        )
-        driver.execute_script("arguments[0].click();", button)
-        # Esperar resultado visible
-        result_div = WebDriverWait(driver, timeout_ajax).until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(., 'Datos de la Persona') or contains(., 'Información para el DNI')]"))
-        )
-        parsed = parse_fields_from_text(result_div.text)
+        driver.find_element(By.XPATH, f"//button[contains(text(),'{boton_texto}')]").click()
+        time.sleep(2)
+
+        data = {}
+        if accion == "Buscar":
+            data["dni"] = dni
+            data["nombres"] = driver.find_element(By.ID, "nombres").get_attribute("value")
+            data["apellido_paterno"] = driver.find_element(By.ID, "apellidop").get_attribute("value")
+            data["apellido_materno"] = driver.find_element(By.ID, "apellidom").get_attribute("value")
+        elif accion == "Consultar":
+            data["fecha_nacimiento"] = driver.find_element(By.ID, "fechanac").get_attribute("value")
+
         driver.quit()
-        return parsed
+        return data
     except Exception as e:
-        try:
-            driver.quit()
-        except:
-            pass
         print("⚠️ Error en consulta:", e)
         return {}
 
+# =========================
+# ✅ Función principal
+# =========================
 def consulta_completa(dni):
     urls = {
         "nombres": ("https://dniperu.com/buscar-dni-nombres-apellidos/", "Buscar"),
         "fecha": ("https://dniperu.com/fecha-de-nacimiento-con-dni/", "Consultar")
     }
-    print(f"🔍 Consultando información completa para DNI {dni}...")
+
+    print(f"🧠 Consultando información completa para DNI {dni}...")
+
     with ThreadPoolExecutor(max_workers=2, thread_name_prefix="DNI") as executor:
-        fut_n = executor.submit(consulta_en_pagina, urls["nombres"][0], dni, urls["nombres"][1])
-        fut_f = executor.submit(consulta_en_pagina, urls["fecha"][0], dni, urls["fecha"][1])
+        fut_n = executor.submit(consulta_en_pagina, urls["nombres"][0], urls["nombres"][1], dni, "Buscar")
+        fut_f = executor.submit(consulta_en_pagina, urls["fecha"][0], urls["fecha"][1], dni, "Consultar")
+
         data_nombres = fut_n.result() or {}
         data_fecha = fut_f.result() or {}
 
